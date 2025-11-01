@@ -1,301 +1,362 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>スロットマシン 拡張版+</title>
-<style>
-  :root{
-    --bg:#0b1220;--panel:#0f1724;--accent:#f59e0b;
-    --muted:#94a3b8;--glass:rgba(255,255,255,0.03);
-    --win:rgba(6,182,212,0.35);
-  }
-  html,body{margin:0;height:100%;font-family:"Segoe UI","Noto Sans JP",sans-serif;
-    background:linear-gradient(180deg,#071026,#08122a);color:#e6eef8}
-  .wrap{max-width:980px;margin:24px auto;padding:20px}
-  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-  h1{font-size:20px;margin:0}
-  .btn{background:var(--accent);border:none;color:#071026;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer}
-  .ghost{background:transparent;border:1px solid rgba(255,255,255,0.08);color:var(--muted);padding:8px 12px;border-radius:10px;cursor:pointer}
-  .hud{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-  .panel{background:var(--glass);padding:10px;border-radius:10px;min-width:120px;text-align:center}
-  .balance{font-size:20px;font-weight:800}
-  .top-controls{display:flex;gap:10px;justify-content:center;margin-bottom:10px}
-  .spin-btn{font-size:16px;padding:12px 18px;border-radius:12px;border:none;background:#06b6d4;color:#031021;font-weight:800;cursor:pointer}
-  .countdown{font-size:13px;color:var(--muted);text-align:center;margin-top:-4px}
-  .area{display:flex;gap:20px;margin-top:10px}
-  .reel-area{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
-  .row{display:flex;gap:10px;justify-content:center}
-  .reel{width:100px;height:100px;border-radius:14px;background:linear-gradient(180deg,#0f1724,#071224);
-    display:flex;align-items:center;justify-content:center;font-size:44px;
-    box-shadow:inset 0 -6px 20px rgba(0,0,0,0.5);position:relative;transition:background 0.3s}
-  .win{background:linear-gradient(180deg,#08303a,#09505a)}
-  .side{width:240px;display:flex;flex-direction:column;gap:12px}
-  .panel-side{background:var(--glass);padding:10px;border-radius:10px}
-  .panel-side h3{font-size:15px;margin:0 0 6px}
-  .skill{margin-bottom:8px;font-size:14px;display:flex;flex-direction:column;gap:2px}
-  .skill button{font-size:12px;padding:4px 8px;border-radius:8px;border:none;background:var(--accent);color:#071026;font-weight:700;cursor:pointer;width:fit-content}
-  .skill small{color:var(--muted)}
-  .log{background:var(--glass);padding:10px;border-radius:10px;max-height:260px;overflow:auto;font-size:13px;line-height:1.4}
-  .log div{margin-bottom:4px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>釣りローグ</title>
+  <style>
+    :root{ --bg:#0b1220; --panel:#0f1724; --accent:#06b6d4; --muted:#94a3b8; --card:#0b1320; color-scheme: dark; }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,\"Hiragino Kaku Gothic ProN\",Meiryo, sans-serif; background:linear-gradient(180deg,#071422 0%, #071827 100%); color:#e6eef6; }
+    .app{ max-width:1100px; margin:18px auto; padding:18px; }
+    .center{ display:flex; gap:12px; align-items:center; justify-content:center; }
+    header{ text-align:center; margin-bottom:10px; }
+    h1{ font-size:36px; margin:6px 0; letter-spacing:2px; }
+    button{ background:var(--accent); color:#00121a; border:0; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:600; }
+    .muted{ color:var(--muted); }
+    .screen{ display:none; }
+    .screen.active{ display:block; }
+    .panel{ background:linear-gradient(180deg,#08121a 0%, #081827 100%); border-radius:12px; padding:12px; box-shadow: 0 6px 18px rgba(0,0,0,0.6); }
+    .top-row{ display:flex; gap:12px; }
+
+    /* Game layout */
+    .left{ width:360px; }
+    .right{ flex:1; }
+    .flex{ display:flex; gap:12px; }
+    .slot{ background:var(--card); border-radius:10px; padding:8px; margin-bottom:8px; }
+    .equip-list, .inv-list{ max-height:320px; overflow:auto; padding:6px; }
+    .inv-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap:8px; }
+    .item{ background:#071829; padding:8px; border-radius:8px; cursor:pointer; }
+    .location-list{ display:flex; flex-wrap:wrap; gap:8px; }
+    .location{ padding:8px 10px; border-radius:8px; background:#081827; cursor:pointer; min-width:120px; text-align:center; }
+    .location.locked{ opacity:0.5; filter:grayscale(0.6); cursor:not-allowed; }
+    .controls{ display:flex; gap:8px; align-items:center; margin:8px 0; }
+    .log{ background:#051018; height:180px; overflow:auto; padding:8px; border-radius:8px; font-size:13px; }
+    .stat-row{ display:flex; gap:8px; flex-wrap:wrap; }
+    .stat{ background:#06121a; padding:8px; border-radius:8px; min-width:120px; }
+    .shop{ display:flex; gap:8px; flex-direction:column; }
+    .shop-item{ display:flex; justify-content:space-between; padding:8px; background:#071827; border-radius:8px; }
+    footer{ margin-top:12px; text-align:center; color:var(--muted); font-size:13px; }
+
+    /* Title screen */
+    .title-actions{ display:flex; gap:10px; justify-content:center; margin-top:14px; }
+
+    /* small responsive */
+    @media(max-width:900px){ .top-row{ flex-direction:column; } .left{ width:100%; } }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>スロットマシン 拡張版+</h1>
-    <button id="resetBtn" class="ghost">初期化</button>
-  </header>
+  <div class="app">
+    <header>
+      <h1>釣りローグ</h1>
+      <div class="muted">一枚ファイルのシンプル釣りRogue（自動釣り・時間/季節/ショップつき）</div>
+    </header>
 
-  <div class="top-controls">
-    <button id="spinBtn" class="spin-btn">🎰 スピン</button>
-    <button id="autoBtn" class="ghost">自動スピン OFF</button>
-  </div>
-  <div class="countdown">リキャスト: <span id="autoCountdown">0.0</span> 秒</div>
-
-  <div class="hud">
-    <div class="panel"><div class="small">所持金</div><div id="balance" class="balance">0</div></div>
-    <div class="panel"><div class="small">プレイ回数</div><div id="plays">0</div></div>
-    <div class="panel"><div class="small">最高所持金</div><div id="bestBalance">0</div></div>
-    <div class="panel"><div class="small">最大配当</div><div id="bestPayout">0</div></div>
-  </div>
-
-  <div class="area">
-    <!-- 左：ログ -->
-    <div class="side">
-      <div class="panel-side">
-        <h3>スピンログ</h3>
-        <div id="log" class="log"></div>
-      </div>
-    </div>
-
-    <!-- 中央：スロット -->
-    <div class="reel-area" id="reelArea"></div>
-
-    <!-- 右：配当 + スキル -->
-    <div class="side">
-      <div class="panel-side">
-        <h3>配当一覧</h3>
-        <div>🍒 ×3=5 / ×2=1</div>
-        <div>🍊 ×3=7 / ×2=1</div>
-        <div>🍋 ×3=8 / ×2=1</div>
-        <div>⭐ ×3=12 / ×2=2</div>
-        <div>7️⃣ ×3=25 / ×2=3</div>
-        <div>💎 ×3=40 / ×2=5</div>
-      </div>
-      <div class="panel-side">
-        <h3>スキル</h3>
-        <div class="skill">
-          <b>自動スピン Lv.<span id="autoLv">1</span> <small>(<span id="autoTime">5.0</span>秒)</small></b>
-          <small>次Lvコスト: <span id="autoCost">10</span></small>
-          <button id="autoUp">強化</button>
+    <!-- Title screen -->
+    <div id="titleScreen" class="panel screen active">
+      <div style="text-align:center;">
+        <h2>ようこそ — 釣りローグ</h2>
+        <p class="muted">冒険して魚を釣り、装備を整え、町で商売しよう。セーブは自動（localStorage）。</p>
+        <div class="title-actions">
+          <button id="startBtn">はじめる</button>
+          <button id="initBtn">初期化</button>
         </div>
-        <div class="skill">
-          <b>スロット追加 Lv.<span id="slotLv">1</span></b>
-          <small>次Lvコスト: <span id="slotCost">20</span></small>
-          <button id="slotUp">強化</button>
-        </div>
-        <div class="skill">
-          <b>倍プッシュ Lv.<span id="pushLv">1</span></b>
-          <small>次Lvコスト: <span id="pushCost">50</span></small>
-          <button id="pushUp">強化</button>
+        <div id="initConfirm" style="margin-top:10px; display:none;">
+          <div class="muted">すべてのデータを初期化します。実行は1度だけ選択できます。</div>
+          <div style="margin-top:8px;" class="center"><button id="confirmInit">初期化を実行</button><button id="cancelInit">キャンセル</button></div>
         </div>
       </div>
     </div>
+
+    <!-- Game screen -->
+    <div id="gameScreen" class="screen panel">
+      <div class="top-row">
+        <div class="left">
+          <div class="slot panel">
+            <h3>装備 / 所持金: <span id="gold">0</span> G</h3>
+            <div class="equip-list" id="equipList">
+              <!-- Equip slots -->
+              <div><strong>竿:</strong> <span id="rodSlot">(未装備)</span></div>
+              <div><strong>リール:</strong> <span id="reelSlot">(未装備)</span></div>
+              <div><strong>えさ:</strong> <span id="baitSlot">(未装備)</span></div>
+            </div>
+          </div>
+
+          <div class="slot panel">
+            <h3>所持品</h3>
+            <div class="inv-list">
+              <div class="inv-grid" id="invGrid"></div>
+            </div>
+          </div>
+
+          <div class="slot panel">
+            <h3>行先</h3>
+            <div class="location-list" id="locations"></div>
+            <div class="muted" style="margin-top:6px;">現在地: <span id="currentLocation">町</span></div>
+          </div>
+
+        </div>
+
+        <div class="right">
+          <div class="slot panel">
+            <h3>釣り - <span id="placeLabel">町</span></h3>
+            <div class="stat-row">
+              <div class="stat">季節: <select id="seasonSelect"><option>春</option><option>夏</option><option>秋</option><option>冬</option></select></div>
+              <div class="stat">時間: <span id="timeLabel">06:00</span></div>
+              <div class="stat">水深: <select id="depthSelect"><option>浅い</option><option>中間</option><option>深い</option></select></div>
+              <div class="stat">距離: <select id="distSelect"><option>近距離</option><option>中距離</option><option>長距離</option></select></div>
+            </div>
+            <div class="controls">
+              <button id="goFish">開始</button>
+              <button id="stopFish">停止</button>
+              <div class="muted">(釣りはえさがある限り自動で繰り返します)</div>
+            </div>
+            <div style="margin-top:8px;">
+              <div class="log" id="log"></div>
+            </div>
+          </div>
+
+          <div class="slot panel">
+            <h3>町 / ショップ</h3>
+            <div class="shop" id="shopList"></div>
+          </div>
+
+          <div class="slot panel">
+            <h3>魚図鑑 & 売値</h3>
+            <div id="pokedex" style="max-height:140px; overflow:auto;"></div>
+          </div>
+
+        </div>
+      </div>
+      <footer>保存: 自動（localStorage）。</footer>
+    </div>
   </div>
-</div>
 
-<script>
-(()=>{
-  const SYMBOLS=['🍒','🍊','🍋','⭐','7️⃣','💎'];
-  const PAYTABLE={'🍒':{three:5,two:1},'🍊':{three:7,two:1},'🍋':{three:8,two:1},'⭐':{three:12,two:2},'7️⃣':{three:25,two:3},'💎':{three:40,two:5}};
-  const reelArea=document.getElementById('reelArea');
-  const balanceEl=document.getElementById('balance');
-  const playsEl=document.getElementById('plays');
-  const bestBalanceEl=document.getElementById('bestBalance');
-  const bestPayoutEl=document.getElementById('bestPayout');
-  const autoLvEl=document.getElementById('autoLv');
-  const slotLvEl=document.getElementById('slotLv');
-  const pushLvEl=document.getElementById('pushLv');
-  const autoCostEl=document.getElementById('autoCost');
-  const slotCostEl=document.getElementById('slotCost');
-  const pushCostEl=document.getElementById('pushCost');
-  const autoBtn=document.getElementById('autoBtn');
-  const countdownEl=document.getElementById('autoCountdown');
-  const logEl=document.getElementById('log');
-  const spinBtn=document.getElementById('spinBtn');
-  const autoUp=document.getElementById('autoUp');
-  const slotUp=document.getElementById('slotUp');
-  const pushUp=document.getElementById('pushUp');
-  const resetBtn=document.getElementById('resetBtn');
-  const autoTimeEl=document.getElementById('autoTime');
+  <script>
+  // ======= データ定義 =======
+  const STORAGE_KEY = 'fishingRogue_v1';
+  let game = null;
+  const DEFAULT = {
+    gold: 200,
+    season: '春',
+    timeHour: 6, // 0-23
+    location: '町',
+    inventory: [ {id:'bait_basic', type:'bait', name:'ミミズ', qty:10}, {id:'rod_1', type:'rod', name:'初心者の竿', atk:1}, {id:'reel_1', type:'reel', name:'初心者リール', atk:1}],
+    equip: {rod:'rod_1', reel:'reel_1', bait:'bait_basic'},
+    fishLog: [],
+    unlocked: ['町','堤防'],
+    initializedOnce: false,
+    timeTickPaused:false
+  };
 
-  let balance=50,plays=0,bestBalance=50,bestPayout=0;
-  let autoLv=1,slotLv=1,pushLv=1;
-  let autoOn=false,autoTimer=null,autoCount=0;
-  const baseAuto=10,baseSlot=20,basePush=50;
-  const KEY='slot_v8_save';
+  // 簡易魚データ - 場所・季節・深さ・距離で変化
+  const FISH = [
+    {id:'aji', name:'アジ', locations:['堤防','町','砂浜'], seasons:['春','夏','秋'], depth:['浅い','中間'], dist:['近距離','中距離'], basePrice:20, sizeRange:[10,30]},
+    {id:'tai', name:'タイ', locations:['砂浜','岩場','町'], seasons:['春','夏'], depth:['中間','深い'], dist:['中距離','長距離'], basePrice:150, sizeRange:[200,800]},
+    {id:'saba', name:'サバ', locations:['堤防','町'], seasons:['夏','秋'], depth:['中間','深い'], dist:['中距離','長距離'], basePrice:60, sizeRange:[100,300]},
+    {id:'iwashi', name:'イワシ', locations:['堤防','町','砂浜'], seasons:['春','秋'], depth:['浅い'], dist:['近距離','中距離'], basePrice:10, sizeRange:[5,15]},
+    {id:'masu', name:'ニジマス', locations:['川','渓流','河口'], seasons:['春','秋'], depth:['浅い','中間'], dist:['近距離'], basePrice:200, sizeRange:[150,600]},
+    {id:'karei', name:'カレイ', locations:['砂浜','岩場'], seasons:['冬','秋'], depth:['深い'], dist:['長距離'], basePrice:120, sizeRange:[150,500]},
+    {id:'unagi', name:'ウナギ', locations:['河口','川','池'], seasons:['夏'], depth:['深い','中間'], dist:['中距離','長距離'], basePrice:500, sizeRange:[300,1200]},
+  ];
 
-  function save(){localStorage.setItem(KEY,JSON.stringify({balance,plays,bestBalance,bestPayout,autoLv,slotLv,pushLv}));}
-  function load(){
-    const d=JSON.parse(localStorage.getItem(KEY)||'{}');
-    balance=d.balance??50;plays=d.plays??0;bestBalance=d.bestBalance??50;bestPayout=d.bestPayout??0;
-    autoLv=d.autoLv??1;slotLv=d.slotLv??1;pushLv=d.pushLv??1;
+  const SHOP_ITEMS = [
+    {id:'bait_basic', name:'ミミズ (えさ) x10', type:'bait', price:30, gives:{id:'bait_basic', qty:10}},
+    {id:'bait_lure', name:'ルアー (えさ) x5', type:'bait', price:150, gives:{id:'bait_lure', qty:5}},
+    {id:'rod_2', name:'強化竿', type:'rod', price:800, gives:{id:'rod_2'}},
+    {id:'reel_2', name:'パワーリール', type:'reel', price:900, gives:{id:'reel_2'}},
+    {id:'map_river', name:'河川の地図(解放条件)', type:'special', price:1000, gives:{unlock:'川'}},
+  ];
+
+  // 装備のスペック
+  const EQUIP_STATS = {
+    'rod_1': {power:10, maxSize:400},
+    'rod_2': {power:30, maxSize:1200},
+    'reel_1': {power:8, maxSize:300},
+    'reel_2': {power:28, maxSize:1000}
+  };
+
+  // ======= ユーティリティ =======
+  function saveGame(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(game)); }
+  function loadGame(){ const s = localStorage.getItem(STORAGE_KEY); if(!s) return null; try{return JSON.parse(s);}catch(e){return null;} }
+  function resetGame(){ localStorage.removeItem(STORAGE_KEY); game = JSON.parse(JSON.stringify(DEFAULT)); game.initializedOnce = true; saveGame(); renderAll(); logAdd('データを初期化しました。'); }
+
+  function logAdd(t){ const el = document.getElementById('log'); const now = new Date(); const ts = now.toLocaleTimeString(); el.innerHTML = `<div>[${ts}] ${t}</div>` + el.innerHTML; }
+  function formatTime(h){ return (''+h).padStart(2,'0') + ':00'; }
+
+  // ======= 初期化と画面切替 =======
+  document.getElementById('startBtn').addEventListener('click', ()=>{
+    if(!game){ game = loadGame() || JSON.parse(JSON.stringify(DEFAULT)); }
+    showScreen('gameScreen'); renderAll(); startClock(); saveGame();
+  });
+
+  document.getElementById('initBtn').addEventListener('click', ()=>{
+    const c = document.getElementById('initConfirm'); c.style.display = 'block';
+  });
+  document.getElementById('cancelInit').addEventListener('click', ()=>{ document.getElementById('initConfirm').style.display='none'; });
+  document.getElementById('confirmInit').addEventListener('click', ()=>{
+    // 初期化は一度だけ実行の選択
+    if(game && game.initializedOnce){ if(!confirm('既に初期化は実行されたようです。再度初期化しますか？')) return; }
+    resetGame(); document.getElementById('initConfirm').style.display='none';
+  });
+
+  function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+  // ======= レンダリング =======
+  function renderAll(){ renderStats(); renderInventory(); renderLocations(); renderShop(); renderPokedex(); }
+
+  function renderStats(){ document.getElementById('gold').textContent = game.gold; document.getElementById('rodSlot').textContent = getItemName(game.equip.rod) || '(未装備)'; document.getElementById('reelSlot').textContent = getItemName(game.equip.reel) || '(未装備)'; document.getElementById('baitSlot').textContent = getItemName(game.equip.bait) || '(未装備)'; document.getElementById('seasonSelect').value = game.season; document.getElementById('timeLabel').textContent = formatTime(game.timeHour); document.getElementById('currentLocation').textContent = game.location; document.getElementById('placeLabel').textContent = game.location; }
+
+  function getItemName(id){ if(!id) return null; const it = game.inventory.find(i=>i.id===id); if(it) return it.name + (it.qty?(' x'+it.qty):''); // sometimes equipment is in inventory
+    // fallback
+    const shop = SHOP_ITEMS.find(s=>s.id===id);
+    if(shop) return shop.name; return id;
   }
 
-  function reset(){
-    balance=50;plays=0;bestBalance=50;bestPayout=0;
-    autoLv=1;slotLv=1;pushLv=1;
-    stopAuto();
-    save();
-    buildReels();
-    render();
-    logEl.innerHTML='';
-    addLog('💫 ゲームを初期化しました');
-  }
-
-  function currentRecast(){
-    return Math.max(0.1,5-(autoLv-1)*0.1);
-  }
-
-  function render(){
-    balanceEl.textContent=balance;
-    playsEl.textContent=plays;
-    bestBalanceEl.textContent=bestBalance;
-    bestPayoutEl.textContent=bestPayout;
-    autoLvEl.textContent=autoLv;
-    slotLvEl.textContent=slotLv;
-    pushLvEl.textContent=pushLv;
-    autoCostEl.textContent=baseAuto*Math.pow(2,autoLv-1);
-    slotCostEl.textContent=baseSlot*Math.pow(2,slotLv-1);
-    pushCostEl.textContent=basePush*Math.pow(2,pushLv-1);
-    autoTimeEl.textContent=currentRecast().toFixed(1);
-  }
-
-  function buildReels(){
-    reelArea.innerHTML='';
-    for(let y=0;y<slotLv;y++){
-      const row=document.createElement('div');
-      row.className='row';
-      for(let x=0;x<3;x++){
-        const r=document.createElement('div');
-        r.className='reel';
-        const inner=document.createElement('div');
-        inner.className='inner';
-        inner.textContent='?';
-        r.appendChild(inner);
-        row.appendChild(r);
-      }
-      reelArea.appendChild(row);
+  function renderInventory(){ const grid = document.getElementById('invGrid'); grid.innerHTML=''; // show 10 visible with scroll
+    const inv = game.inventory;
+    for(let i=0;i<inv.length;i++){
+      const it = inv[i]; const div = document.createElement('div'); div.className='item'; div.textContent = it.name + (it.qty?(' x'+it.qty):''); div.onclick = ()=>{ onUseItem(it); };
+      grid.appendChild(div);
     }
   }
 
-  function spin(){
-    if(balance<=0){autoOn && stopAuto();reset();return;}
-    spinBtn.disabled=true;
-
-    const bet = Math.pow(2, pushLv-1);
-    balance -= bet;
-    plays++;
-
-    const results=[];
-    const rows=reelArea.querySelectorAll('.row');
-    rows.forEach((row)=>{
-      const reels=row.querySelectorAll('.reel');
-      reels.forEach((r)=>{
-        r.classList.remove('win');
-        const inner=r.querySelector('.inner');
-        const sym=SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
-        inner.textContent=sym;
-        results.push(sym);
-      });
+  function renderLocations(){ const el = document.getElementById('locations'); el.innerHTML=''; const all = ['町','堤防','砂浜','岩場','河口','川','池','渓流'];
+    all.forEach(loc=>{
+      const div = document.createElement('div'); div.className='location'; div.textContent=loc;
+      if(!game.unlocked.includes(loc)) { div.classList.add('locked'); }
+      div.onclick = ()=>{ if(!game.unlocked.includes(loc)) { alert('未解放：条件を満たすと解放されます。'); return; } game.location = loc; renderAll(); saveGame(); }
+      el.appendChild(div);
     });
-
-    const totalWin=calc(results);
-    const payout = totalWin * Math.pow(2, pushLv-1);
-    if(payout>0){
-      balance+=payout;
-      if(balance>bestBalance)bestBalance=balance;
-      if(payout>bestPayout)bestPayout=payout;
-      addLog(`+${payout}枚 🎉`);
-    } else addLog(`はずれ (-${bet}枚)`);
-
-    if(balance<=0){addLog('💀 所持金が0になりました。初期化します。');stopAuto();reset();return;}
-    render();save();
-    spinBtn.disabled=false;
   }
 
-  function calc(res){
-    let total=0;
-    const rows=reelArea.querySelectorAll('.row');
-    rows.forEach((row,y)=>{
-      const reels=row.querySelectorAll('.reel');
-      const r=res.slice(y*3,y*3+3);
-      if(r[0]===r[1]&&r[1]===r[2]){reels.forEach(e=>e.classList.add('win'));total+=PAYTABLE[r[0]].three;}
-      else if(r[0]===r[1]){reels[0].classList.add('win');reels[1].classList.add('win');total+=PAYTABLE[r[0]].two||0;}
-      else if(r[1]===r[2]){reels[1].classList.add('win');reels[2].classList.add('win');total+=PAYTABLE[r[1]].two||0;}
-      else if(r[0]===r[2]){reels[0].classList.add('win');reels[2].classList.add('win');total+=PAYTABLE[r[0]].two||0;}
+  function renderShop(){ const el = document.getElementById('shopList'); el.innerHTML=''; SHOP_ITEMS.forEach(it=>{
+    const row = document.createElement('div'); row.className='shop-item'; row.innerHTML = `<div>${it.name}</div><div><strong>${it.price}G</strong> <button data-id='${it.id}'>購入</button></div>`;
+    row.querySelector('button').onclick = ()=>{ buyItem(it.id); };
+    el.appendChild(row);
+  }); }
+
+  function renderPokedex(){ const el = document.getElementById('pokedex'); el.innerHTML=''; FISH.forEach(f=>{
+    const caughtTotal = game.fishLog.filter(x=>x.id===f.id).length; el.innerHTML += `<div><strong>${f.name}</strong> 基本価格:${f.basePrice}G 釣果回数:${caughtTotal}</div>`;
+  }); }
+
+  // ======= アイテム使用 / 購入 =======
+  function onUseItem(it){ if(it.type==='bait'){ // 自動で装備
+      game.equip.bait = it.id; logAdd(`${it.name} をえさとして装備しました。`);
+    } else if(it.type==='rod'){ game.equip.rod = it.id; logAdd(`${it.name} を装備しました。`);
+    } else if(it.type==='reel'){ game.equip.reel = it.id; logAdd(`${it.name} を装備しました。`);
+    } else { logAdd('そのアイテムは現状で使えません。'); }
+    saveGame(); renderAll(); }
+
+  function buyItem(id){ const it = SHOP_ITEMS.find(s=>s.id===id); if(!it) return; if(game.gold < it.price){ alert('所持金不足'); return; }
+    game.gold -= it.price;
+    if(it.gives.unlock){ if(!game.unlocked.includes(it.gives.unlock)){ game.unlocked.push(it.gives.unlock); logAdd(it.gives.unlock + ' を解放しました！'); } }
+    if(it.gives.id){ // either add qty or item
+      const existing = game.inventory.find(x=>x.id===it.gives.id);
+      if(existing){ existing.qty = (existing.qty||0) + (it.gives.qty||1); }
+      else { game.inventory.push({id:it.gives.id, type: it.type, name: it.name.replace(/ \(.*?\)/,'') , qty: it.gives.qty||1}); }
+    }
+    saveGame(); renderAll(); logAdd(`${it.name} を購入しました。`);
+  }
+
+  // ======= 釣りロジック（自動） =======
+  let fishingTimer = null;
+  document.getElementById('goFish').addEventListener('click', ()=>{ startFishing(); });
+  document.getElementById('stopFish').addEventListener('click', ()=>{ stopFishing(); });
+
+  function startFishing(){ if(fishingTimer) return; if(!hasBait()){ alert('えさがありません。ショップで購入してください。'); return; }
+    logAdd('釣り開始（自動）'); fishingTimer = setInterval(() => { doOneCast(); }, 2200); }
+  function stopFishing(){ if(!fishingTimer) return; clearInterval(fishingTimer); fishingTimer = null; logAdd('釣りを停止しました。'); }
+
+  function hasBait(){ const b = game.inventory.find(i=>i.type==='bait' && i.qty>0); return !!b; }
+
+  function consumeBait(){ const b = game.inventory.find(i=>i.type==='bait' && i.qty>0); if(!b) return false; b.qty--; if(b.qty<=0){ // remove
+      const idx = game.inventory.indexOf(b); if(idx>=0) game.inventory.splice(idx,1); game.equip.bait = null; logAdd(b.name + ' がなくなりました。'); }
+    saveGame(); renderAll(); return true; }
+
+  function doOneCast(){ // 1回投げる -> 当たり判定
+    if(!hasBait()){ stopFishing(); logAdd('全てのえさがなくなりました。'); return; }
+    const depth = document.getElementById('depthSelect').value; const dist = document.getElementById('distSelect').value; const season = game.season; const place = game.location;
+    // 選択に応じた候補魚
+    const candidates = FISH.filter(f => f.locations.includes(place) && f.seasons.includes(season) && f.depth.includes(depth) && f.dist.includes(dist));
+    // 装備補正
+    const rod = game.equip.rod; const reel = game.equip.reel; const rodStat = EQUIP_STATS[rod] || {power:5, maxSize:300}; const reelStat = EQUIP_STATS[reel] || {power:5, maxSize:300};
+    // 出現確率: 候補がなければ小魚を出す
+    if(candidates.length===0){ // 低確率で小物
+      logAdd('何も釣れなかった...'); consumeBait(); return; }
+    // ランダムで魚を選ぶ（装備で大型が出やすい）
+    // 装備合計パワー
+    const equipPower = (rodStat.power||0) + (reelStat.power||0);
+    // 重み付け：小さな魚ほど高確率。だがequipPowerが高いと大型魚を選択しやすい
+    const weighted = [];
+    candidates.forEach(f => {
+      // base weight inversely proportional to median size
+      const medianSize = (f.sizeRange[0]+f.sizeRange[1])/2;
+      let weight = 1000 / medianSize; // smaller fish larger weight
+      // bigger equipPower increases chance of larger fish => increase weight for larger-size fish entries later
+      weighted.push({fish:f, weight:weight});
     });
-    return total;
+    // pick one
+    const totalW = weighted.reduce((s,a)=>s+a.weight,0);
+    let r = Math.random() * totalW; let chosen = weighted.find(w=> (r-=w.weight) <=0 ).fish;
+
+    // size influenced by equip and randomness
+    const minS = chosen.sizeRange[0]; const maxS = chosen.sizeRange[1];
+    // base size
+    let size = Math.floor(minS + Math.random() * (maxS-minS));
+    // increase size chance with equip power
+    size += Math.floor((rodStat.maxSize + reelStat.maxSize)/200 * Math.random()*50);
+    // clamp
+    const maxAllowedByEquip = Math.floor((rodStat.maxSize + reelStat.maxSize)/2);
+    if(size > maxAllowedByEquip){ // 釣り上げられない判定
+      // 張り合い判定
+      const chance = Math.max(0.05, (rodStat.power + reelStat.power)/60); // higher power -> greater chance to land
+      if(Math.random() > chance){ logAdd(`${chosen.name}（${size}g）を引き上げられなかった...`); consumeBait(); saveGame(); return; }
+      // else succeed
+    }
+
+    // 成功
+    const fishItem = {id:chosen.id, name:chosen.name, size:size, price: Math.max(1, Math.round(chosen.basePrice * (size/100))) };
+    game.fishLog.push(fishItem);
+    // add to inventory as stack by id_size? We'll add as distinct entries for simplicity
+    game.inventory.push({id:'fish_'+chosen.id+'_'+Date.now(), type:'fish', name: `${chosen.name} (${size}g)`, fishId: chosen.id, size:size, price: fishItem.price});
+    logAdd(`釣れた！ ${chosen.name} (${size}g) 売値:${fishItem.price}G`);
+    consumeBait(); saveGame(); renderAll();
   }
 
-  function addLog(t){
-    const div=document.createElement('div');
-    div.textContent=`#${plays} ${t}`;
-    logEl.prepend(div);
-    while(logEl.children.length>50)logEl.lastChild.remove();
-  }
+  // ======= 時間・季節処理（町で操作可能） =======
+  let clockTimer = null;
+  function startClock(){ if(clockTimer) return; clockTimer = setInterval(()=>{ advanceTime(); }, 60000); // 1分ごとに1時間進行
+    // also show immediate
+    renderAll(); }
+  function advanceTime(){ game.timeHour = (game.timeHour + 1) % 24; // 昼夜の変化
+    // optional auto-unlock example: unlock '砂浜' after 6:00 in any season
+    if(!game.unlocked.includes('砂浜') && game.gold>=300){ game.unlocked.push('砂浜'); logAdd('砂浜が解放されました！'); }
+    saveGame(); renderAll(); }
 
-  function startAuto(){
-    if(autoOn)return;
-    autoOn=true;
-    autoBtn.textContent='自動スピン ON';
-    autoLoop();
-  }
+  document.getElementById('seasonSelect').addEventListener('change', (e)=>{ if(game.location !== '町'){ alert('季節は町でのみ変更できます。町に移動してください。'); renderAll(); return; } game.season = e.target.value; saveGame(); renderAll(); logAdd('季節を '+game.season+' に変更しました。'); });
 
-  function stopAuto(){
-    autoOn=false;
-    autoBtn.textContent='自動スピン OFF';
-    clearTimeout(autoTimer);
-  }
+  // ======= 魚の売買 =======
+  // 売却 - インベントリ内の魚アイテムクリックで売る選択肢
+  function sellFish(invIndex){ const it = game.inventory[invIndex]; if(!it || it.type!=='fish') return; if(!confirm(it.name + ' を売りますか？ 売値:' + it.price + 'G')) return; game.gold += it.price; game.inventory.splice(invIndex,1); saveGame(); renderAll(); logAdd(it.name + ' を売却しました。'); }
 
-  function autoLoop(){
-    const delay=currentRecast();
-    autoCount=delay;
-    const tick=()=>{
-      if(!autoOn)return;
-      autoCount=Math.max(0,autoCount-0.1);
-      countdownEl.textContent=autoCount.toFixed(1);
-      if(autoCount<=0){
-        spin();
-        autoCount=delay;
-      }
-      autoTimer=setTimeout(tick,100);
-    };
-    tick();
-  }
+  // アイテムクリック拡張：魚をクリックで売却、装備は装着
+  function bindInventoryClicks(){ const grid = document.getElementById('invGrid'); // rebuild listeners
+    Array.from(grid.children).forEach((el, idx)=>{
+      el.onclick = ()=>{ const it = game.inventory[idx]; if(!it) return; if(it.type==='fish'){ sellFish(idx); } else { onUseItem(it); } };
+    }); }
 
-  autoBtn.onclick=()=>autoOn?stopAuto():startAuto();
-  autoUp.onclick=()=>{
-    const cost=baseAuto*Math.pow(2,autoLv-1);
-    if(balance<cost)return alert(`強化に${cost}枚必要です`);
-    balance-=cost;autoLv++;render();save();addLog(`自動スピン Lv${autoLv} 強化 (-${cost}枚)`);
-  };
-  slotUp.onclick=()=>{
-    const cost=baseSlot*Math.pow(2,slotLv-1);
-    if(balance<cost)return alert(`強化に${cost}枚必要です`);
-    balance-=cost;slotLv++;buildReels();render();save();addLog(`スロット追加 Lv${slotLv} 強化 (-${cost}枚)`);
-  };
-  pushUp.onclick=()=>{
-    const cost=basePush*Math.pow(2,pushLv-1);
-    if(balance<cost)return alert(`強化に${cost}枚必要です`);
-    balance-=cost;pushLv++;render();save();addLog(`倍プッシュ Lv${pushLv} 強化 (-${cost}枚)`);
-  };
-  resetBtn.onclick=()=>{if(confirm('すべて初期化しますか？'))reset();};
-  spinBtn.onclick=spin;
+  // Wrap renderInventory to bind clicks
+  const oldRenderInventory = renderInventory;
+  renderInventory = function(){ oldRenderInventory(); bindInventoryClicks(); };
 
-  load();render();buildReels();
-})();
-</script>
+  // ======= 初回ロード =======
+  window.addEventListener('load', ()=>{
+    game = loadGame() || JSON.parse(JSON.stringify(DEFAULT));
+    // if never saved before, make sure initializedOnce default false
+    if(game.initializedOnce === undefined) game.initializedOnce = false;
+    renderAll();
+  });
+
+  </script>
 </body>
 </html>
