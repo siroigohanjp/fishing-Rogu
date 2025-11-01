@@ -1,652 +1,559 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>釣りローグ（Fishing Rogue）</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>釣りローグ — 釣りミニゲーム強化版</title>
 <style>
   :root{
-    --bg:#0f1724; --panel:#0b1220; --accent:#06b6d4; --muted:#94a3b8;
-    --card:#071025; --glass: rgba(255,255,255,0.03);
+    --bg:#041622; --card:#07212a; --accent:#06b6d4; --muted:#9fb7c4;
+    --danger:#ff6b6b; --success:#7ee3ff;
+    --glass: rgba(255,255,255,0.03);
   }
   *{box-sizing:border-box}
   body{
-    margin:0; font-family: "Noto Sans JP", "Helvetica Neue", Arial, sans-serif;
-    background:linear-gradient(180deg,#071028 0%, #052233 60%, #02121a 100%);
+    margin:0;font-family:"Noto Sans JP",system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;
+    background:linear-gradient(180deg,#02121a 0%, #042b34 60%);
     color:#e6eef6;
     -webkit-font-smoothing:antialiased;
   }
-  .center{
-    max-width:1100px;margin:24px auto;padding:18px;
-  }
-  /* Title screen */
-  .title-screen{
-    display:flex; align-items:center; justify-content:center; flex-direction:column;
-    gap:14px;
-    min-height:60vh;
-  }
-  h1{
-    font-size:48px;margin:0 0 6px 0; letter-spacing:4px; color:var(--accent);
-    text-shadow:0 6px 24px rgba(0,0,0,0.6);
-  }
-  .btn{background:var(--accent); color:#02121a; border:none;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:700;}
-  .btn.secondary{background:transparent;color:var(--accent);border:1px solid rgba(255,255,255,0.06);}
+  .wrap{max-width:1100px;margin:20px auto;padding:18px}
+  h1{color:var(--accent);margin:0 0 8px 0}
+  .layout{display:grid;grid-template-columns:320px 1fr;gap:12px}
 
-  /* Game layout */
-  .game{
-    display:grid; grid-template-columns:260px 1fr 260px; gap:12px; align-items:start;
-  }
   .panel{
     background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    border-radius:12px;padding:12px; box-shadow: 0 6px 18px rgba(0,0,0,0.6);
-    min-height:120px;
+    border-radius:12px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,0.6);
   }
-  .panel h2{font-size:16px;margin:0 0 8px 0;color:var(--muted);}
-  .slot{background:var(--glass);padding:8px;border-radius:8px;margin-bottom:8px;}
-  .flex{display:flex;gap:8px;align-items:center;}
-  .inventory{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .item{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;font-size:13px;}
-  .small{font-size:12px;color:var(--muted)}
-  .dest-list{display:flex;flex-direction:column;gap:8px}
-  .dest{padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);cursor:pointer;border:1px solid transparent}
-  .dest:hover{border-color:rgba(255,255,255,0.04)}
-  .dest.active{outline:2px solid rgba(6,182,212,0.16)}
+  .small{font-size:13px;color:var(--muted)}
+  .stat{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .inventory{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 
   /* Fishing area */
-  .fishing-area{min-height:380px; display:flex;flex-direction:column;gap:12px;align-items:stretch;justify-content:flex-start;}
-  .pond{flex:1;border-radius:12px;background:linear-gradient(180deg,#033042,#01202a);padding:14px;border:1px solid rgba(255,255,255,0.03)}
-  .hud{display:flex;gap:12px;align-items:center}
+  .fishing-area{display:flex;flex-direction:column;gap:10px}
+  .pond{
+    height:420px;border-radius:12px;padding:12px;background:
+    radial-gradient(ellipse at 50% 10%, rgba(126,227,255,0.06) 0%, rgba(6,182,212,0.02) 30%, transparent 60%),
+    linear-gradient(180deg,#03394a,#012028);
+    position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.03)
+  }
+  /* water ripple (fish effect) */
+  .ripple{position:absolute;border-radius:50%;pointer-events:none;mix-blend-mode:overlay;opacity:0.9}
+
+  /* Line / rod visuals */
+  .rod{
+    position:absolute;left:12px;top:16px;width:200px;height:6px;border-radius:6px;background:linear-gradient(90deg,#123 0%, #234 100%);
+    transform-origin:left center; z-index:30;
+  }
+  .line{
+    position:absolute;left:200px;top:20px; width:2px;background:linear-gradient(180deg,#fff,#8fdfff);
+    transform-origin: top center; z-index:25;
+    box-shadow:0 0 6px rgba(126,227,255,0.1);
+  }
+
+  /* fish sprite (simple circle) */
+  .fish{
+    position:absolute;width:48px;height:24px;border-radius:24px;background:linear-gradient(90deg,#ffd97a,#ffb86b);
+    transform-origin:center center; z-index:20;display:flex;align-items:center;justify-content:center;font-weight:700;color:#07212a;
+    box-shadow:0 6px 18px rgba(0,0,0,0.4);
+  }
+
+  /* HUD */
+  .hud-row{display:flex;gap:8px;align-items:center}
   .meter{height:14px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden;flex:1;position:relative}
-  .meter > .fill{height:100%;background:linear-gradient(90deg,#06b6d4,#7ee3ff);width:0%}
-  .power-bar{height:10px;background:rgba(255,255,255,0.02);border-radius:6px;overflow:hidden;position:relative}
-  .power-pointer{position:absolute;top:0;bottom:0;width:3px;background:#fff;opacity:0.9;left:0}
+  .meter > .fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--success));width:0%}
+  .meter-label{font-size:13px;color:var(--muted);min-width:110px;text-align:left}
+  .btn{background:var(--accent);color:#02121a;border:none;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700}
+  .smallbtn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;color:var(--muted);cursor:pointer}
 
-  /* modal */
-  .modal-bg{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:flex;align-items:center;justify-content:center;}
-  .modal{background:#071428;padding:18px;border-radius:12px;max-width:420px;width:92%;}
-  .row{display:flex;gap:8px;margin-top:10px;align-items:center}
+  /* fight UI */
+  .fight-ui{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .control-row{display:flex;gap:8px}
 
-  footer{margin-top:16px;color:var(--muted);font-size:13px;text-align:center}
-  .muted{color:var(--muted);font-size:13px}
-  .smallbtn{font-size:13px;padding:6px 8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted);cursor:pointer}
+  /* tension bar with safe zone */
+  .tension-bar{position:relative;height:24px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden}
+  .tension-fill{height:100%;background:linear-gradient(90deg,#ffd47a,#ff6b6b);width:0%}
+  .safe-zone{position:absolute;top:0;height:100%;background:rgba(126,227,255,0.14);border-radius:6px}
+
+  /* floating feedback */
+  .toast{position:absolute;left:50%;top:8px;transform:translateX(-50%);padding:8px 12px;border-radius:8px;background:rgba(0,0,0,0.5);color:#fff;z-index:80}
+
+  /* responsive */
+  @media (max-width:880px){
+    .layout{grid-template-columns:1fr; }
+    .rod{left:8px}
+  }
+
 </style>
 </head>
 <body>
-  <div class="center" id="app">
-    <!-- Title Screen -->
-    <div id="titleScreen" class="title-screen">
-      <h1>釣りローグ</h1>
-      <div class="muted">未知の釣り場を探索し、伝説の魚を目指すローグライク釣りゲーム</div>
-      <div style="display:flex;gap:10px;margin-top:14px">
-        <button id="startBtn" class="btn">はじめる</button>
-        <button id="initBtn" class="btn secondary">初期化</button>
-      </div>
-      <div class="small" style="margin-top:10px">※進行は自動セーブされます（localStorage）</div>
+  <div class="wrap">
+    <h1>釣りローグ — 釣りミニゲーム（強化版）</h1>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+      <div class="small">操作: <strong>引く(Reel)</strong> と <strong>緩める(Slack)</strong> を押してテンションを管理</div>
+      <button id="demoCatch" class="smallbtn">サンプル魚を釣る</button>
     </div>
 
-    <!-- Main Game -->
-    <div id="gameScreen" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div class="small">所持金: <span id="gold">0</span> G</div>
-        <div>
-          <button id="saveBtn" class="smallbtn">手動セーブ</button>
-          <button id="backTitle" class="smallbtn">タイトルに戻る</button>
+    <div class="layout">
+      <div class="panel">
+        <div class="stat"><div>所持金: <span id="gold">0</span> G</div><div class="small">レベル: <span id="level">1</span></div></div>
+
+        <div style="margin-top:12px">
+          <div class="small">装備</div>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <div class="smallbtn">ロッド: 素朴</div>
+            <div class="smallbtn">ライン: 普通</div>
+            <div class="smallbtn">餌: ワーム</div>
+          </div>
         </div>
+
+        <div style="margin-top:12px" class="panel">
+          <div class="small">釣りログ</div>
+          <div id="log" style="height:220px;overflow:auto;background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-top:8px;font-size:13px"></div>
+        </div>
+
       </div>
 
-      <div class="game">
-        <!-- left panel: equipment & inventory -->
-        <div class="panel">
-          <h2>装備</h2>
-          <div id="equipList" class="slot">
-            <div class="small">ロッド: <span id="equipRod">素朴な竿</span></div>
-            <div class="small">リール: <span id="equipReel">標準リール</span></div>
-            <div class="small">餌: <span id="equipBait">ワーム</span></div>
-          </div>
+      <div class="panel fishing-area">
+        <div class="small">釣り場: <strong id="destName">静かな湖</strong> — <span id="destEffect">魚の出やすい浅場</span></div>
 
-          <h2 style="margin-top:8px">所持品</h2>
-          <div class="inventory" id="inventory"></div>
-          <div style="margin-top:8px">
-            <button id="sellAll" class="smallbtn">魚を全部売る</button>
-          </div>
+        <div class="pond" id="pond">
+          <!-- rod and line visuals -->
+          <div class="rod" id="rodEl"></div>
+          <div class="line" id="lineEl" style="height:120px;left:200px;top:20px"></div>
+
+          <!-- fish placeholder -->
+          <!-- dynamic fish elements will be appended here -->
+
+          <!-- floating toast -->
+          <div id="toast" class="toast" style="display:none"></div>
         </div>
 
-        <!-- center: fishing -->
-        <div class="panel fishing-area">
-          <h2>釣り場: <span id="currentDest">—</span></h2>
-          <div class="pond" id="pond">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div class="small">エリア効果: <span id="destEffect">—</span></div>
-              <div class="small">時間: <span id="timeLabel">朝</span></div>
+        <!-- HUD / Fight UI -->
+        <div class="fight-ui">
+          <div style="display:flex;gap:12px;align-items:center">
+            <div class="meter-label">テンション</div>
+            <div class="tension-bar" style="flex:1" id="tensionBar">
+              <div class="tension-fill" id="tensionFill"></div>
+              <div class="safe-zone" id="safeZone" style="left:40%;width:20%"></div>
             </div>
+            <div style="min-width:70px;text-align:right" class="small">耐久: <span id="lineDur">100</span>%</div>
+          </div>
 
-            <div style="margin-top:12px">
-              <div class="hud">
-                <div style="width:120px">キャスト力</div>
-                <div class="meter" id="castMeter"><div class="fill" id="castFill"></div><div class="power-pointer" id="castPointer" style="left:0"></div></div>
-                <div style="width:120px;text-align:right"><button id="castBtn" class="btn" style="padding:6px 10px">キャスト</button></div>
-              </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="meter-label">魚のHP</div>
+            <div class="meter" style="flex:1"><div class="fill" id="fishHpFill" style="width:0%"></div></div>
+            <div style="min-width:70px;text-align:right" class="small">残: <span id="fishHp">0</span></div>
+          </div>
 
-              <div style="margin-top:12px">
-                <div class="small">釣果ログ</div>
-                <div id="log" style="height:110px;overflow:auto;background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-top:6px;font-size:13px"></div>
-              </div>
+          <div class="control-row">
+            <button id="reelBtn" class="btn">引く（Reel）</button>
+            <button id="slackBtn" class="smallbtn">緩める（Slack）</button>
+            <button id="steadyBtn" class="smallbtn">ステディ（小回復）</button>
+            <div style="flex:1"></div>
+            <div class="small">長押し不要 — クリックで操作</div>
+          </div>
 
-              <div id="fightArea" style="margin-top:12px;display:none">
-                <div class="small">ファイト！クリックで引きに耐えよう</div>
-                <div class="power-bar" id="fightBar" style="margin-top:8px;position:relative">
-                  <div id="targetZone" style="position:absolute;left:40%;width:20%;top:0;bottom:0;background:rgba(6,182,212,0.12)"></div>
-                  <div id="pointer" style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#fff"></div>
-                </div>
-                <div style="margin-top:8px;display:flex;gap:8px">
-                  <button id="reelBtn" class="btn">引く</button>
-                  <div class="small">魚体力: <span id="fishHP">0</span></div>
-                  <div class="small">糸耐久: <span id="lineDur">100</span>%</div>
-                </div>
-              </div>
-
-            </div>
+          <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+            <div class="small">フェーズ:</div><div id="phaseLabel" class="small">待機</div>
+            <div style="flex:1"></div>
+            <div class="small">目標テンション範囲: <span id="safeRangeLabel">40%〜60%</span></div>
           </div>
         </div>
 
-        <!-- right panel: destinations -->
-        <div class="panel">
-          <h2>行先</h2>
-          <div class="dest-list" id="destinations"></div>
-
-          <h2 style="margin-top:10px">ステータス</h2>
-          <div class="slot">
-            <div class="small">HP: <span id="hp">100</span></div>
-            <div class="small">スタミナ: <span id="stamina">100</span></div>
-            <div class="small">釣り師レベル: <span id="playerLevel">1</span></div>
-          </div>
-
-        </div>
-      </div>
-
-      <footer>※この試作は拡張可能 — 装備・図鑑・永続強化などを追加できます。</footer>
-    </div>
-
-    <!-- modal for init choices -->
-    <div id="initModal" style="display:none" class="modal-bg">
-      <div class="modal">
-        <div style="font-weight:700;font-size:18px">初期化</div>
-        <div class="small" style="margin-top:8px">データを初期化します。どの範囲で初期化しますか？</div>
-
-        <div class="row">
-          <label><input type="radio" name="initOpt" value="once" checked> 今回のみ（セッション中だけ初期化）</label>
-        </div>
-        <div class="row">
-          <label><input type="radio" name="initOpt" value="perma"> 恒久的にデータを消去（localStorageをクリア）</label>
-        </div>
-
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-          <button id="cancelInit" class="smallbtn">キャンセル</button>
-          <button id="confirmInit" class="btn">実行</button>
-        </div>
       </div>
     </div>
-
   </div>
 
 <script>
 /*
-  Fishing Rogue - single-file prototype
-  - Auto-save to localStorage
-  - Title screen with init options
-  - Basic UI: equipment, inventory, destinations
-  - Fishing mini-game: cast power + fight meter
-  Expand points are marked in comments.
+  高度化釣りミニゲーム
+  - テンション管理（0〜100）
+  - 安全域(safeZone)にテンションを保つとダメージを与える（引く成功）
+  - 魚は複数ステートを持ち、パターンで強弱をつける
+  - プレイヤー操作: 引く / 緩める / ステディ（小回復）
+  - UIにアニメーションとフィードバック
+  - 拡張しやすい構造（fishData, behaviors）
 */
 
-/* ---------- Utilities ---------- */
+/* ---------- ヘルパ ---------- */
 const qs = s => document.querySelector(s);
 const qsa = s => [...document.querySelectorAll(s)];
-const rand = (a,b)=> Math.floor(Math.random()*(b-a+1))+a;
+const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 
-const DEFAULT_STATE = () => ({
-  gold: 50,
-  hp: 100,
-  stamina: 100,
-  level: 1,
-  equip: {rod: "素朴な竿", reel: "標準リール", bait: "ワーム"},
-  inventory: [],
-  currentDest: null,
-  // destinations are regenerated each run; saved for persistence if desired
-  destinations: generateDestinations(),
-  timeOfDay: "朝", // 朝/昼/夜
+/* ---------- ゲーム状態 ---------- */
+let state = {
+  tension: 45,       // 0-100
+  lineDur: 100,      // 0-100
+  fish: null,
+  inFight: false,
+  safeZone: {left:40, width:20}, // in %
+  pointer: {pos:0, dir:1}, // pointer on tension bar for visual (optional)
+  timers: [],
+};
+
+const pond = qs("#pond");
+const logEl = qs("#log");
+const toastEl = qs("#toast");
+
+/* ---------- 魚データ（拡張可） ---------- */
+const fishDB = [
+  {name:"ニジマス", hp:12, power:0.9, pattern:["idle","tug","idle","flee"], value:10},
+  {name:"ブラックバス", hp:18, power:1.1, pattern:["idle","tug","pull","idle","dive"], value:22},
+  {name:"ウナギ", hp:20, power:1.0, pattern:["idle","slip","tug","idle"], value:30},
+  {name:"幻のフグ", hp:34, power:1.5, pattern:["tug","pull","panic","dive","tug"], value:80},
+  {name:"深淵の鯨魚", hp:60, power:2.0, pattern:["pull","dive","pull","tug","pull","dive"], value:220}
+];
+
+/* ---------- 表示更新 ---------- */
+function addLog(msg){
+  const t = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  logEl.innerHTML = `<div>[${t}] ${escapeHtml(msg)}</div>` + logEl.innerHTML;
+}
+function toast(msg, ttl=1200){
+  toastEl.textContent = msg;
+  toastEl.style.display = "block";
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(()=> toastEl.style.display = "none", ttl);
+}
+function escapeHtml(s){ return (s+"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
+
+function renderHUD(){
+  qs("#tensionFill").style.width = state.tension + "%";
+  qs("#lineDur").textContent = Math.max(0,Math.round(state.lineDur));
+  qs("#fishHp").textContent = state.fish ? Math.max(0,state.fish.hpCurrent) : 0;
+  const hpPct = state.fish ? Math.max(0, (state.fish.hpCurrent / state.fish.hpMax) * 100) : 0;
+  qs("#fishHpFill").style.width = hpPct + "%";
+  // safe zone visuals
+  qs("#safeZone").style.left = state.safeZone.left + "%";
+  qs("#safeZone").style.width = state.safeZone.width + "%";
+  qs("#safeRangeLabel").textContent = `${Math.round(state.safeZone.left)}%〜${Math.round(state.safeZone.left + state.safeZone.width)}%`;
+}
+
+/* ---------- 魚スポーン（戦闘開始） ---------- */
+function spawnFish(fishDef){
+  // create fish DOM
+  clearFight();
+  const fish = {
+    def: fishDef,
+    hpMax: fishDef.hp,
+    hpCurrent: fishDef.hp,
+    power: fishDef.power,
+    pattern: [...fishDef.pattern], // cyclic pattern
+    patternIndex: 0,
+    x: 400, y: 160, angle:0
+  };
+  state.fish = fish;
+  state.inFight = true;
+
+  // fish element
+  const fEl = document.createElement("div");
+  fEl.className = "fish";
+  fEl.textContent = fishDef.name.split("")[0]; // small label
+  fEl.style.left = fish.x + "px";
+  fEl.style.top = fish.y + "px";
+  fEl.style.width = "64px";
+  fEl.style.height = "28px";
+  pond.appendChild(fEl);
+  fish.el = fEl;
+
+  addLog(`「${fishDef.name}」が食いついた！`);
+  toast(`ファイト開始 — ${fishDef.name}`);
+  // set a random safeZone center based on fish difficulty
+  const zoneWidth = clamp(18 - fishDef.power*3, 10, 30);
+  const left = clamp(rand(20,70), 10, 80 - zoneWidth);
+  state.safeZone = {left, width:zoneWidth};
+
+  // start fish behavior loop
+  scheduleNextBehavior();
+  renderHUD();
+}
+
+/* ---------- 行動ルーチン ---------- */
+function scheduleNextBehavior(){
+  if(!state.inFight || !state.fish) return;
+  clearTimers();
+  // determine next action from pattern
+  const p = state.fish.pattern;
+  const idx = state.fish.patternIndex % p.length;
+  const action = p[idx];
+  state.fish.patternIndex++;
+  // durations differ by action
+  let duration = 800 + rand(300,900);
+  if(action === "idle") duration = 800 + rand(200,800);
+  if(action === "tug") duration = 700 + rand(200,600);
+  if(action === "pull") duration = 1000 + rand(300,800);
+  if(action === "dive") duration = 1100 + rand(600,1200);
+  if(action === "panic" || action === "flee") duration = 900 + rand(200,1200);
+
+  // perform effect
+  doFishAction(action);
+  // schedule next
+  state.timers.push(setTimeout(() => {
+    scheduleNextBehavior();
+  }, duration));
+}
+
+function doFishAction(action){
+  if(!state.inFight || !state.fish) return;
+  const f = state.fish;
+  const el = f.el;
+  const basePull = f.power * rand(3,6); // effect on tension
+  // approximate effects:
+  if(action === "idle"){
+    // slight decrease in tension (fish rests)
+    state.tension = clamp(state.tension - (0.2 + Math.random()*1.0), 0, 100);
+    animateFish(el, 'idle');
+    addLog("魚が息を潜めた…");
+  } else if(action === "tug"){
+    // quick snap: tension increases moderately
+    state.tension = clamp(state.tension + basePull*1.6, 0, 100);
+    state.lineDur = clamp(state.lineDur - (Math.random()*2 + 1), 0, 100);
+    animateFish(el, 'tug');
+    addLog("強い引き！"); 
+  } else if(action === "pull"){
+    // long pull: tension raises more and may damage line
+    state.tension = clamp(state.tension + basePull*2.2, 0, 100);
+    state.lineDur = clamp(state.lineDur - (Math.random()*4 + 2), 0, 100);
+    animateFish(el, 'pull');
+    addLog("突っ込み！ラインに負荷がかかる");
+  } else if(action === "dive"){
+    // dive reduces chance of reeling; tension may drop or spike
+    if(Math.random() < 0.6){
+      state.tension = clamp(state.tension + basePull*1.8, 0, 100);
+      state.lineDur = clamp(state.lineDur - (Math.random()*6 + 3), 0, 100);
+      addLog("潜られた！深く潜る");
+    } else {
+      state.tension = clamp(state.tension - (Math.random()*6 + 2), 0, 100);
+      addLog("急に緩む…");
+    }
+    animateFish(el, 'dive');
+  } else if(action === "slip" || action === "panic" || action === "flee"){
+    // chance to escape if tension too low or too high
+    if(Math.random() < 0.5){
+      addLog("魚がもがいている…");
+      animateFish(el, 'panic');
+      state.tension = clamp(state.tension + rand(2,8), 0, 100);
+      state.lineDur = clamp(state.lineDur - (Math.random()*3 + 1), 0, 100);
+    } else {
+      addLog("魚が落ち着いた…");
+      animateFish(el, 'idle');
+    }
+  }
+  // update visuals and check line break / escape
+  renderHUD();
+  checkLineOrEscape();
+}
+
+/* ---------- プレイヤー操作 ---------- */
+qs("#reelBtn").addEventListener("click", ()=>{
+  if(!state.inFight) return;
+  // successful reel deals damage only if tension within safe zone
+  const tzLeft = state.safeZone.left;
+  const tzRight = tzLeft + state.safeZone.width;
+  const t = state.tension;
+  // reel action also increases tension
+  state.tension = clamp(state.tension + rand(2,6), 0, 100);
+  state.lineDur = clamp(state.lineDur - (Math.random()*1.4 + 0.6), 0, 100);
+  // if in safe zone => apply damage
+  if(t >= tzLeft && t <= tzRight){
+    // damage scaled by player 'skill' (could include level)
+    const dmg = Math.max(1, Math.round(rand(3,6) + (1 + Math.floor(rand(0,1))*1)));
+    state.fish.hpCurrent = Math.max(0, state.fish.hpCurrent - dmg);
+    addLog(`うまく合わせた！ 魚に ${dmg} のダメージ`);
+    shakeFish(state.fish.el);
+    if(state.fish.hpCurrent <= 0){
+      winFight();
+      return;
+    }
+  } else {
+    // miss / bad timing: fish recovers / escapes a bit
+    state.fish.hpCurrent = Math.min(state.fish.hpMax, state.fish.hpCurrent + rand(0,2));
+    addLog("タイミングが合わない…魚が抵抗した");
+  }
+  renderHUD();
+  checkLineOrEscape();
 });
 
-function generateDestinations(){
-  // simple list with effects
-  const list = [
-    {id:1,name:"静かな湖",effect:"魚の量↑、大型少なめ",tier:1},
-    {id:2,name:"深淵の沼",effect:"レア魚の出現↑、危険度↑",tier:2},
-    {id:3,name:"荒れた海岸",effect:"引きが強い魚が多い",tier:2},
-    {id:4,name:"天空の池",effect:"幻の魚が出るかも",tier:3},
-  ];
-  return list;
-}
+qs("#slackBtn").addEventListener("click", ()=>{
+  if(!state.inFight) return;
+  // slack decreases tension quickly, but may let fish escape if done incorrectly
+  state.tension = clamp(state.tension - rand(6,14), 0, 100);
+  // small chance fish takes advantage
+  if(Math.random() < 0.06){
+    state.lineDur = clamp(state.lineDur - (Math.random()*3 + 2), 0, 100);
+    addLog("緩めた隙に魚が動いた！");
+  } else {
+    addLog("糸を緩めた — テンション低下");
+  }
+  renderHUD();
+  checkLineOrEscape();
+});
 
-/* ---------- State & Persistence ---------- */
-let state = null;
-const STORAGE_KEY = "fishing_rogue_save_v1";
+qs("#steadyBtn").addEventListener("click", ()=>{
+  if(!state.inFight) return;
+  // small positive effect: regain small lineDur and stabilize tension toward safe center
+  const center = state.safeZone.left + state.safeZone.width/2;
+  // move tension slightly toward center
+  state.tension = clamp(state.tension + (center - state.tension) * 0.25, 0, 100);
+  state.lineDur = clamp(state.lineDur + rand(2,5), 0, 100);
+  addLog("ステディを使った：テンションが落ち着いた");
+  renderHUD();
+});
 
-function loadState(){
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if(raw){
-    try{
-      const parsed = JSON.parse(raw);
-      state = Object.assign(DEFAULT_STATE(), parsed);
-      // ensure destinations exist
-      if(!state.destinations) state.destinations = generateDestinations();
+/* ---------- 勝利 / 敗北判定 ---------- */
+function checkLineOrEscape(){
+  if(!state.inFight || !state.fish) return;
+  // if lineDur <=0 => break
+  if(state.lineDur <= 0){
+    endFight(false, "糸が切れた…");
+    return;
+  }
+  // if tension >= 100 -> line snaps
+  if(state.tension >= 100){
+    endFight(false, "テンション過多で糸が切れた…");
+    return;
+  }
+  // if tension <= 0 -> slack too much, fish may escape
+  if(state.tension <= 0){
+    // high chance to escape
+    if(Math.random() < 0.6){
+      endFight(false, "糸がたるんで魚が逃げた…");
       return;
-    }catch(e){
-      console.error("load failed", e);
-    }
-  }
-  state = DEFAULT_STATE();
-}
-function saveState(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  // visual feedback (small)
-  qs("#saveBtn").textContent = "保存済み";
-  setTimeout(()=> qs("#saveBtn").textContent = "手動セーブ", 1000);
-}
-
-/* ---------- UI helpers ---------- */
-function renderAll(){
-  qs("#gold").textContent = state.gold;
-  qs("#hp").textContent = state.hp;
-  qs("#stamina").textContent = state.stamina;
-  qs("#playerLevel").textContent = state.level;
-  qs("#equipRod").textContent = state.equip.rod;
-  qs("#equipReel").textContent = state.equip.reel;
-  qs("#equipBait").textContent = state.equip.bait;
-  renderInventory();
-  renderDestinations();
-  if(state.currentDest){
-    const d = state.destinations.find(x=>x.id===state.currentDest);
-    if(d){
-      qs("#currentDest").textContent = d.name;
-      qs("#destEffect").textContent = d.effect;
-    }
-  } else {
-    qs("#currentDest").textContent = "未選択";
-    qs("#destEffect").textContent = "—";
-  }
-  qs("#timeLabel").textContent = state.timeOfDay;
-  saveState(); // autosave on render
-}
-
-function renderInventory(){
-  const el = qs("#inventory");
-  el.innerHTML = "";
-  if(state.inventory.length===0){
-    el.innerHTML = '<div class="item small">所持品なし</div>';
-    return;
-  }
-  state.inventory.forEach((it, idx)=>{
-    const d = document.createElement("div");
-    d.className = "item";
-    d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-weight:700">${it.name}</div>
-        <div class="small">${it.type} / 値：${it.value}G</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <button class="smallbtn" data-idx="${idx}" onclick="sellItem(${idx})">売る</button>
-        <button class="smallbtn" data-idx="${idx}" onclick="useItem(${idx})">使う</button>
-      </div>
-    </div>`;
-    el.appendChild(d);
-  });
-}
-
-window.sellItem = function(idx){
-  const it = state.inventory[idx];
-  if(!it) return;
-  state.gold += Math.round(it.value * 0.9);
-  log(`「${it.name}」を売却して ${Math.round(it.value*0.9)}G を入手`);
-  state.inventory.splice(idx,1);
-  renderAll();
-}
-
-window.useItem = function(idx){
-  const it = state.inventory[idx];
-  if(!it) return;
-  if(it.type === "魚"){
-    // 食べるとHP or スタミナ回復（例）
-    state.hp = Math.min(100, state.hp + 8);
-    state.stamina = Math.min(100, state.stamina + 12);
-    log(`「${it.name}」を食べた。HPとスタミナが回復。`);
-    state.inventory.splice(idx,1);
-  } else {
-    log(`「${it.name}」は今は使えない。`);
-  }
-  renderAll();
-}
-
-/* ---------- Destinations ---------- */
-function renderDestinations(){
-  const wrap = qs("#destinations");
-  wrap.innerHTML = "";
-  state.destinations.forEach(d=>{
-    const el = document.createElement("div");
-    el.className = "dest" + (state.currentDest===d.id ? " active":"");
-    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-weight:700">${d.name}</div>
-        <div class="small">${d.effect}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <button class="smallbtn" onclick="selectDest(${d.id})">選択</button>
-        <button class="smallbtn" onclick="fastTravel(${d.id})">移動</button>
-      </div>
-    </div>`;
-    wrap.appendChild(el);
-  });
-}
-
-window.selectDest = function(id){
-  state.currentDest = id;
-  log("行先を選択しました。準備ができたらキャストしましょう。");
-  renderAll();
-}
-window.fastTravel = function(id){
-  // simulate travel cost/time
-  const d = state.destinations.find(x=>x.id===id);
-  if(!d) return;
-  // cost increases with tier
-  const cost = d.tier * 5;
-  if(state.gold < cost){
-    log("所持金が足りません（移動コスト: "+cost+"G）");
-    return;
-  }
-  state.gold -= cost;
-  state.currentDest = id;
-  // change time randomly
-  state.timeOfDay = ["朝","昼","夜"][rand(0,2)];
-  // possible random event: gain item or small damage
-  if(Math.random() < 0.15){
-    state.hp = Math.max(0, state.hp - rand(1,6));
-    log(`移動中に疲労。HPが少し減った（-${rand(1,6)}）`);
-  }
-  log(`${d.name} に移動しました（移動費 ${cost}G）`);
-  renderAll();
-}
-
-/* ---------- Logging ---------- */
-function log(msg){
-  const el = qs("#log");
-  const now = new Date();
-  const t = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  el.innerHTML = `<div>[${t}] ${escapeHtml(msg)}</div>` + el.innerHTML;
-}
-
-/* sanitize */
-function escapeHtml(text){
-  return (text+"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-}
-
-/* ---------- Fishing core ---------- */
-let castOsc = null;
-let castPower = 0;
-let casting = false;
-
-function startCastOsc(){
-  // pointer oscillates automatically
-  const ptr = qs("#castPointer");
-  let dir = 1;
-  let pos = 0;
-  casting = true;
-  castOsc = setInterval(()=>{
-    pos += dir * 2;
-    if(pos > 100){ pos = 100; dir = -1; }
-    if(pos < 0){ pos = 0; dir = 1; }
-    ptr.style.left = pos + "%";
-    castPower = pos;
-    qs("#castFill").style.width = pos + "%";
-  }, 20);
-}
-
-function stopCastOsc(){
-  clearInterval(castOsc);
-  castOsc = null;
-  casting = false;
-}
-
-function attemptCast(){
-  if(!state.currentDest){
-    log("行先を選んでください。");
-    return;
-  }
-  if(casting){
-    // already in cast charge - interpret as stop and cast
-    stopCastOsc();
-    const power = castPower;
-    log(`キャスト！力: ${Math.round(power)}%`);
-    // determine distance/what fish based on power and dest tier
-    const d = state.destinations.find(x=>x.id===state.currentDest);
-    const tier = d ? d.tier : 1;
-    // chance to get fish depends on power and tier
-    const roll = Math.random()*100;
-    const successThreshold = 25 + tier*15 - Math.abs(50-power)/2; // heuristic
-    if(roll < successThreshold){
-      // fish hooked => start fight
-      const fish = generateFishForTier(tier);
-      startFight(fish);
     } else {
-      log("何も喰わなかった…");
-      // small stamina cost / bait consumption
-      state.stamina = Math.max(0, state.stamina - 3);
-      renderAll();
+      addLog("糸がたるんだが、まだ保てている");
     }
-    return;
   }
-  // start charge
-  startCastOsc();
-}
-
-function generateFishForTier(tier){
-  // simple sample fishes
-  const pool = [
-    {name:"ニジマス",tier:1,hp:8, value:8},
-    {name:"コイ",tier:1,hp:10, value:10},
-    {name:"ブラックバス",tier:2,hp:14,value:18},
-    {name:"ウナギ",tier:2,hp:16,value:20},
-    {name:"幻のフグ",tier:3,hp:26,value:60},
-    {name:"深淵の鯨魚",tier:3,hp:40,value:120}
-  ];
-  // filter by tier-ish and pick random
-  const candidates = pool.filter(f => Math.abs(f.tier - tier) <= 1);
-  return JSON.parse(JSON.stringify(candidates[rand(0,candidates.length-1)])); // clone
-}
-
-/* ---------- Fight mini-game ---------- */
-let fightState = null;
-let fightInterval = null;
-
-function startFight(fish){
-  fightState = {
-    fish: fish,
-    fishHp: fish.hp,
-    lineDur: 100,
-    pointerPos: 0,
-    dir: 1,
-  };
-  qs("#fishHP").textContent = fightState.fishHp;
-  qs("#lineDur").textContent = fightState.lineDur.toFixed(0);
-  qs("#fightArea").style.display = "block";
-  // show target zone randomization
-  const leftPct = rand(20,60);
-  const widthPct = rand(12,30);
-  qs("#targetZone").style.left = leftPct + "%";
-  qs("#targetZone").style.width = widthPct + "%";
-  // pointer move interval
-  fightInterval = setInterval(()=>{
-    fightState.pointerPos += fightState.dir * rand(1,4);
-    if(fightState.pointerPos > 100){ fightState.pointerPos = 100; fightState.dir = -1; }
-    if(fightState.pointerPos < 0){ fightState.pointerPos = 0; fightState.dir = 1; }
-    qs("#pointer").style.left = fightState.pointerPos + "%";
-    // passive changes: fish may pull line (decrease lineDur)
-    if(Math.random() < 0.02){
-      fightState.lineDur -= rand(0.5,1.8);
-    }
-    // if lineDur <= 0 => break
-    if(fightState.lineDur <= 0){
-      endFight(false, "糸が切れた…");
-    }
-    qs("#lineDur").textContent = Math.max(0, fightState.lineDur).toFixed(0);
-  }, 30);
-  // user must click 引く (reelBtn) repeatedly to deal damage while keeping pointer inside zone
+  // occasional passive line degradation
+  state.lineDur = clamp(state.lineDur - (Math.random()*0.2), 0, 100);
 }
 
 function endFight(success, reason){
-  clearInterval(fightInterval);
-  fightInterval = null;
-  qs("#fightArea").style.display = "none";
+  // clear timers, remove fish, show result
+  clearFight();
   if(success){
-    // grant fish item
-    const fish = fightState.fish;
-    const item = {name:fish.name, type:"魚", value:fish.value};
-    state.inventory.push(item);
-    log(`「${fish.name}」を釣り上げた！ 値: ${fish.value}G`);
-    // reward gold sometimes
-    if(Math.random() < 0.15){
-      const tip = Math.round(fish.value * 0.3);
-      state.gold += tip;
-      log(`${tip}G のボーナスを手に入れた！`);
-    }
-    // small xp -> level up
-    state.level += Math.floor(fish.value / 50);
-    if(state.level > 20) state.level = 20;
-    renderAll();
+    addLog("勝利！魚を釣り上げた！");
+    toast("釣り上げ成功！", 1500);
+    // reward (stub)
   } else {
-    log(reason || "逃げられた");
+    addLog(reason || "逃げられた");
+    toast(reason || "逃げられた", 1500);
   }
-  fightState = null;
+  // cleanup fish DOM if exists
+  if(state.fish && state.fish.el){
+    state.fish.el.remove();
+  }
+  state.fish = null;
+  state.inFight = false;
+  // reset tension slowly
+  state.tension = clamp(state.tension * 0.6 + 30, 0, 100);
+  renderHUD();
 }
 
-/* reel button logic */
-qs("#reelBtn").addEventListener("click", ()=>{
-  if(!fightState) return;
-  // check pointer inside target zone?
-  const left = parseFloat(qs("#targetZone").style.left);
-  const width = parseFloat(qs("#targetZone").style.width);
-  const pos = fightState.pointerPos;
-  if(pos >= left && pos <= left + width){
-    // success hit => damage fish
-    const dmg = rand(3,6) + Math.floor(state.level/3);
-    fightState.fishHp -= dmg;
-    // a successful reel also recovers line a bit
-    fightState.lineDur = Math.min(100, fightState.lineDur + rand(1,3));
-    qs("#fishHP").textContent = Math.max(0,fightState.fishHp);
-    qs("#lineDur").textContent = Math.max(0,fightState.lineDur).toFixed(0);
-    // if fishHp <=0 => win
-    if(fightState.fishHp <= 0){
-      endFight(true);
-      return;
-    }
-  } else {
-    // missed -> line degrades more and fish HP maybe recovers (escape attempt)
-    fightState.lineDur -= rand(4,10);
-    fightState.fishHp += rand(0,2); // wriggle
-    qs("#lineDur").textContent = Math.max(0,fightState.lineDur).toFixed(0);
-    qs("#fishHP").textContent = fightState.fishHp;
-    // if line breaks
-    if(fightState.lineDur <= 0){
-      endFight(false, "糸が切れた…");
-      return;
-    }
-    // if fish hp balloon beyond limit, it escapes
-    if(fightState.fishHp > fightState.fish.hp * 1.5){
-      endFight(false, "魚が逃げた…");
-      return;
-    }
+function winFight(){
+  // award fish -> just a log and clear
+  addLog(`「${state.fish.def.name}」を捕獲！報酬: ${state.fish.def.value}G`);
+  toast("大物をゲット！", 1600);
+  // TODO: add to inventory / gold
+  clearFight();
+  if(state.fish && state.fish.el) state.fish.el.remove();
+  state.fish = null; state.inFight = false;
+  // small post-win tension reduction
+  state.tension = clamp(state.tension * 0.5 + 20, 0, 100);
+  renderHUD();
+}
+
+/* ---------- タイマー管理とクリア ---------- */
+function clearTimers(){
+  while(state.timers.length) clearTimeout(state.timers.pop());
+}
+function clearFight(){
+  clearTimers();
+}
+
+/* ---------- fish visual effects ---------- */
+function animateFish(el, mode){
+  if(!el) return;
+  el.style.transition = "transform 200ms ease, left 300ms ease, top 350ms ease";
+  if(mode === 'idle'){
+    el.style.transform = 'rotate(0deg) scale(1)';
+    el.style.left = (rand(320, 520)) + "px";
+    el.style.top = (rand(120, 260)) + "px";
+  } else if(mode === 'tug'){
+    el.style.transform = 'rotate(-6deg) scale(1.04)';
+    el.style.left = (rand(240, 420)) + "px";
+    el.style.top = (rand(100, 240)) + "px";
+  } else if(mode === 'pull'){
+    el.style.transform = 'rotate(-10deg) scale(1.08)';
+    el.style.left = (rand(180, 380)) + "px";
+    el.style.top = (rand(80, 220)) + "px";
+  } else if(mode === 'dive'){
+    el.style.transform = 'rotate(8deg) scale(0.95)';
+    el.style.left = (rand(260, 480)) + "px";
+    el.style.top = (rand(180, 320)) + "px";
+  } else if(mode === 'panic'){
+    el.style.transform = 'rotate(14deg) scale(1.12)';
+    el.style.left = (rand(200, 520)) + "px";
+    el.style.top = (rand(60, 260)) + "px";
   }
-});
+  // ripple effect
+  spawnRipple(parseInt(el.style.left||0)+10, parseInt(el.style.top||0)+10, 18 + Math.random()*20);
+}
+function shakeFish(el){
+  if(!el) return;
+  el.animate([
+    {transform: 'translateX(0)'},
+    {transform: 'translateX(-8px)'},
+    {transform: 'translateX(8px)'},
+    {transform: 'translateX(0)'}
+  ], {duration:220, iterations:1});
+}
 
-/* ---------- UI wiring ---------- */
-qs("#startBtn").addEventListener("click", ()=>{
-  // load and enter game
-  loadState();
-  qs("#titleScreen").style.display = "none";
-  qs("#gameScreen").style.display = "block";
-  renderAll();
-  log("ゲームを開始しました。行先を選択してキャストしよう！");
-});
-qs("#backTitle").addEventListener("click", ()=>{
-  qs("#gameScreen").style.display = "none";
-  qs("#titleScreen").style.display = "flex";
-});
-qs("#saveBtn").addEventListener("click", ()=> saveState());
+function spawnRipple(x,y,size){
+  const r = document.createElement("div");
+  r.className = "ripple";
+  r.style.left = (x - size/2) + "px";
+  r.style.top = (y - size/2) + "px";
+  r.style.width = size + "px";
+  r.style.height = size + "px";
+  r.style.background = "radial-gradient(circle, rgba(255,255,255,0.25), rgba(255,255,255,0.04))";
+  r.style.opacity = 0.9;
+  pond.appendChild(r);
+  const anim = r.animate([
+    {transform: 'scale(0.2)', opacity: 0.8},
+    {transform: 'scale(1.8)', opacity: 0}
+  ], {duration:900, easing:'ease-out'});
+  anim.onfinish = ()=> r.remove();
+}
 
-/* initial load to show title (don't auto-start) */
-loadState();
-
-/* init modal handling */
-qs("#initBtn").addEventListener("click", ()=>{
-  qs("#initModal").style.display = "flex";
-});
-qs("#cancelInit").addEventListener("click", ()=> qs("#initModal").style.display = "none");
-qs("#confirmInit").addEventListener("click", ()=>{
-  const opt = document.querySelector('input[name="initOpt"]:checked').value;
-  if(opt === "once"){
-    // temporary clear current runtime state (but keep localStorage)
-    state = DEFAULT_STATE();
-    qs("#initModal").style.display = "none";
-    // if currently in-game, refresh UI
-    qs("#titleScreen").style.display = "none";
-    qs("#gameScreen").style.display = "block";
-    renderAll();
-    log("今回のみ初期化しました（localStorageは保持）。");
-  } else {
-    // permanent clear localStorage and reset
-    localStorage.removeItem(STORAGE_KEY);
-    state = DEFAULT_STATE();
-    qs("#initModal").style.display = "none";
-    qs("#titleScreen").style.display = "none";
-    qs("#gameScreen").style.display = "block";
-    renderAll();
-    log("恒久的にデータを初期化しました。");
+/* ---------- pointer animation on tension (decorative) ---------- */
+(function pointerLoop(){
+  let dir = 1, pos=state.tension;
+  function step(){
+    // smooth approach towards current tension for visual
+    pos += (state.tension - pos) * 0.08;
+    qs("#tensionFill").style.width = pos + "%";
+    requestAnimationFrame(step);
   }
-});
-
-/* cast button */
-qs("#castBtn").addEventListener("click", ()=> attemptCast());
-
-/* start/stop charging by clicking meter (optional) */
-qs("#castMeter").addEventListener("click", ()=> attemptCast());
-
-/* sell all fish */
-qs("#sellAll").addEventListener("click", ()=>{
-  const fishes = state.inventory.filter(i=>i.type==="魚");
-  if(fishes.length===0){ log("売れる魚がありません。"); return; }
-  const total = fishes.reduce((s,i)=>s+i.value,0);
-  // remove fishes
-  state.inventory = state.inventory.filter(i=>i.type!=="魚");
-  state.gold += total;
-  log(`魚を全部売却して ${total}G を入手した。`);
-  renderAll();
-});
-
-/* manual save on unload */
-window.addEventListener("beforeunload", ()=> saveState());
-
-/* convenience: seed some items if empty on first start */
-(function initialSeed(){
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if(!raw){
-    state = DEFAULT_STATE();
-    state.inventory.push({name:"古いライン", type:"資材", value:6});
-    state.inventory.push({name:"小さな魚（ニジマス）", type:"魚", value:8});
-    saveState();
-  }
+  requestAnimationFrame(step);
 })();
 
-/* small helper to expose state for debugging (dev) */
-window.__state = ()=> state;
+/* ---------- デモ起動 / UI wiring ---------- */
+qs("#demoCatch").addEventListener("click", ()=>{
+  const f = fishDB[rand(0, fishDB.length-1)];
+  spawnFish(f);
+});
+
+function renderHUDLoop(){
+  renderHUD();
+  requestAnimationFrame(renderHUDLoop);
+}
+requestAnimationFrame(renderHUDLoop);
+
+/* ---------- 初期ガイド ---------- */
+addLog("強化版ミニゲームへようこそ — 「引く」か「緩める」を操作してテンションを管理し、魚を釣り上げよう。");
+addLog("安全域 (青い帯) にテンションを保つとダメージが通る。テンションが高すぎると糸が切れる。");
 
 </script>
 </body>
